@@ -6,15 +6,16 @@ Markdown notes taking cli applications
 
 - [x] Folder Database
 - [ ] Commands
-  - [ ] ls
-  - [ ] mk/rm book
-  - [ ] mk/rm note
-  - [ ] mv
-  - [ ] ren
-  - [ ] ls
-  - [ ] cat
-  - [ ] cp
-  - [ ] edit
+  - [x] ls
+  - [x] mk/rm book
+  - [x] mk/rm note
+  - [x] mv
+  - [x] ren
+  - [x] ls
+  - [x] cat
+  - [x] cp
+  - [x] update
+  - [ ] integration_test
 - [ ] Tui
   - [ ] config sort
   - [ ] use (select a item $n $c)
@@ -45,4 +46,8 @@ Markdown notes taking cli applications
   - [ ] set item value
   - [ ] status
 - [ ] server
-- [ ] use cows
+- [ ] Extra
+  - [ ] use cows
+  - [ ] validate ends with / for book
+  - [ ] validate not ends with / for note
+  - [ ] use buffered read/writes

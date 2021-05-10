@@ -51,7 +51,11 @@ impl Folder {
         )
     }
 
-    fn query(path: &PathBuf, create: bool, conn: &DbConnection) -> Result<Option<Self>, String> {
+    pub(super) fn query(
+        path: &PathBuf,
+        create: bool,
+        conn: &DbConnection,
+    ) -> Result<Option<Self>, String> {
         let mut folder: Option<Self> = None;
         for title in path {
             if title.eq("/") {
@@ -77,7 +81,7 @@ impl Folder {
         Ok(folder)
     }
 
-    fn get_id_cow<'a>(folder: &Option<&'a Self>) -> Cow<'a, str> {
+    pub(super) fn get_id_cow<'a>(folder: &Option<&'a Self>) -> Cow<'a, str> {
         match folder {
             Some(ref folder_item) => Cow::from(folder_item.id.as_ref().unwrap()),
             None => Cow::from(""),
@@ -99,16 +103,17 @@ impl Folder {
                 .filter(folders::parent_id.eq(&parent_id))
                 .load::<Self>(*&conn)
                 .map_err(|e| e.to_string())?,
-            // TODO: handle notes
-            vec![],
+            Note::list_parent_id(&parent_id, *&conn)?,
         ))
     }
 
     fn delete_folder(&self, recursive: bool, conn: &DbConnection) -> Result<usize, String> {
         let (folders, notes) = Self::list_optional_folder(Some(self), *&conn)?;
         if recursive {
-            // TODO: handle notes
             let mut rows = 0;
+            for note in notes {
+                rows += note.delete_note(*&conn)?;
+            }
             for folder in folders {
                 rows += folder.delete_folder(recursive, *&conn)?;
             }
@@ -263,7 +268,6 @@ mod tests {
             assert_eq!(execute.unwrap(), 1, "{}: {}", msg, parent_folder);
             assert_folder_not_exists(&parent_folder, &msg, &conn);
         }
-
     }
 
     fn assert_folder_count(folder: &str, count: usize, msg: &str, conn: &DbConnection) {
