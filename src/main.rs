@@ -27,9 +27,17 @@ fn main() {
                     eprintln!("{}", msg);
                 }
             },
-            Err(_) => {
-                Command::clap().print_long_help().unwrap();
-            }
+            Err(e) => match e.kind {
+                structopt::clap::ErrorKind::HelpDisplayed => {
+                    eprintln!("{}", e.message);
+                }
+                _ => {
+                    eprintln!("Error: {:?}", e.kind);
+                    eprintln!("Info: {:?}", e.info);
+                    eprintln!("\n==============================");
+                    Command::clap().print_long_help().unwrap();
+                }
+            },
         }
     }
 }
