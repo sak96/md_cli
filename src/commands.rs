@@ -45,8 +45,8 @@ pub enum Command {
     },
     #[structopt(about = "update note with give file or stdin")]
     Update {
-        note: std::path::PathBuf,
         in_file: Option<std::path::PathBuf>,
+        note: std::path::PathBuf,
     },
     #[structopt(visible_alias = "mv", about = "move note")]
     Move {
@@ -119,7 +119,7 @@ impl Command {
                 );
             }
             Command::Cat {
-                note: path,
+                note,
                 out_file: dest,
             } => {
                 let mut writer: Box<dyn Write> = match dest {
@@ -133,13 +133,10 @@ impl Command {
                     None => Box::new(stdout()),
                 };
                 writer
-                    .write_all(Note::cat(&path, &connection)?.as_bytes())
+                    .write_all(Note::cat(&note, &connection)?.as_bytes())
                     .map_err(|e| e.to_string())?;
             }
-            Command::Update {
-                note: path,
-                in_file: src,
-            } => {
+            Command::Update { note, in_file: src } => {
                 let mut reader: Box<dyn Read> = match src {
                     Some(path) => Box::new(
                         OpenOptions::new()
@@ -153,10 +150,10 @@ impl Command {
                 reader
                     .read_to_string(&mut body)
                     .map_err(|e| e.to_string())?;
-                let rows = Note::update(&path, body, &connection)?;
+                let rows = Note::update(&note, body, &connection)?;
                 println!(
                     "{} successfully created\n {} rows effected",
-                    path.to_string_lossy(),
+                    note.to_string_lossy(),
                     rows
                 );
             }
