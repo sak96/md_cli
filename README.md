@@ -15,6 +15,7 @@ Markdown notes taking cli applications
   - [x] cat
   - [x] cp
   - [x] update
+  - [x] edit
   - [ ] integration_test
 - [ ] Tui
   - [ ] config sort
