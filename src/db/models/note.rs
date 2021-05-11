@@ -56,7 +56,7 @@ impl Note {
 
     fn get_parent_id(path: &PathBuf, parents: bool, conn: &DbConnection) -> Result<String, String> {
         match path.parent() {
-            Some(path) if path.parent().is_some() => Ok(Folder::get_id_cow(
+            Some(path) if path.file_name().is_some() => Ok(Folder::get_id_cow(
                 &Folder::query(&path.to_path_buf(), parents, *&conn)?.as_ref(),
             )
             .to_string()),
