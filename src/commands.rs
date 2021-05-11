@@ -88,21 +88,34 @@ impl Command {
                 path,
             } => {
                 let (folders, notes) = Folder::list(&path, &connection)?;
+                let mut count = folders.len() + notes.len();
+                let mut connector = || {
+                    count -= 1;
+                    if count > 0 {
+                        "├─"
+                    } else {
+                        "└─"
+                    }
+                };
                 for note in notes {
-                    println!("{}{}", indent, note.title);
+                    println!("{}{}{}", indent, connector(), note.title);
                 }
-                let mut next_indent = indent.clone();
-                next_indent.push_str("--");
                 for folder in folders {
-                    println!("{}{}/", indent, folder.title);
+                    let connector = connector();
+                    println!("{}{}{}/", indent, connector, folder.title);
                     if *recursive {
                         let mut path = path.clone();
                         path.push(folder.title);
                         Command::List {
-                            indent: next_indent.clone(),
+                            indent: format!(
+                                "{}{}",
+                                indent,
+                                if connector == "├─" { "│ " } else { "  " }
+                            ),
                             recursive: true,
                             path,
-                        }.execute(&connection)?;
+                        }
+                        .execute(&connection)?;
                     }
                 }
             }
