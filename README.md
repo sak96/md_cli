@@ -4,19 +4,10 @@ Markdown notes taking cli applications
 
 ## Features Planned
 
-- [x] Folder Database
-- [ ] Commands
-  - [x] ls
-  - [x] mk/rm book
-  - [x] mk/rm note
-  - [x] mv
-  - [x] ren
-  - [x] ls
-  - [x] cat
-  - [x] cp
-  - [x] update
-  - [x] edit
-  - [ ] integration_test
+- [x] [Database](./docs/database.md)
+- [ ] [Commands](./docs/commands.md)
+  - [ ] ren
+  - [ ] integration_test for notes
 - [ ] Tui
   - [ ] config sort
   - [ ] use (select a item $n $c)
