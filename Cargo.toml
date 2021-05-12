@@ -11,3 +11,9 @@ diesel_migrations = "1.4"
 dotenv = "0.15"
 uuid = { version = "0.8", features = ["serde", "v4"] }
 dirs = "3.0"
+tui = { version = "0.15.0", optional = true, features = ['crossterm'] }
+crossterm = { version = "0.19", optional = true }
+
+[features]
+default = []
+termui = ["tui", "crossterm"]
