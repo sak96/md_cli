@@ -1,8 +1,9 @@
 use std::path::PathBuf;
 
 use crossterm::{
-    event::{self, Event, KeyCode},
-    terminal::{disable_raw_mode, enable_raw_mode},
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
+    execute,
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 
 use structopt::StructOpt;
@@ -16,12 +17,13 @@ use crate::{
 
 mod views;
 
+pub type TermBackend = Terminal<CrosstermBackend<std::io::Stdout>>;
 pub struct AppContext {
     path: PathBuf,
     items_state: ListState,
     conn: DbConnection,
     err_msg: Option<String>,
-    clear: bool,
+    terminal: TermBackend,
 }
 
 pub enum Item {
@@ -31,32 +33,36 @@ pub enum Item {
 
 impl AppContext {
     pub fn new(conn: DbConnection) -> Self {
+        let terminal = Terminal::new(CrosstermBackend::new(std::io::stdout()))
+            .expect("could not create a terminal");
         Self {
             conn,
+            terminal,
             path: Default::default(),
             items_state: Default::default(),
             err_msg: Default::default(),
-            clear: Default::default(),
+        }
+    }
+
+    fn tui_mode(&mut self, on: bool) {
+        if on {
+            execute!(std::io::stdout(), EnterAlternateScreen, EnableMouseCapture).unwrap();
+            enable_raw_mode().unwrap();
+            self.terminal.resize(self.terminal.size().unwrap()).unwrap();
+        } else {
+            disable_raw_mode().unwrap();
+            execute!(std::io::stdout(), LeaveAlternateScreen, DisableMouseCapture).unwrap();
+            self.terminal.show_cursor().unwrap();
         }
     }
 
     pub fn run(&mut self) {
-        // TODO: fix these
-        enable_raw_mode().expect("can run in raw mode");
-        let mut terminal = Terminal::new(CrosstermBackend::new(std::io::stdout()))
-            .expect("could not create a terminal");
-        terminal.clear().expect("could not clear terminal");
         self.render_loop(&mut terminal);
-        disable_raw_mode().expect("can run in raw mode");
-        terminal.show_cursor().expect("can show cursor");
     }
 
     fn render_loop(&mut self, terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>) {
+        self.tui_mode(true);
         loop {
-            if self.clear {
-                terminal.clear().expect("could not clear terminal");
-                self.clear = false;
-            }
             terminal
                 .draw(|rect| {
                     let app_view = views::AppView {
@@ -79,6 +85,7 @@ impl AppContext {
                 }
             }
         }
+        self.tui_mode(false);
     }
 
     pub fn list(&mut self) -> Vec<Item> {
@@ -120,11 +127,12 @@ impl AppContext {
                         "edit".to_string(),
                         note.to_string_lossy().into(),
                     ]) {
+                        self.tui_mode(false);
                         if let Err(msg) = cmd.execute(&self.conn) {
                             self.err_msg = Some(msg)
                         }
+                        self.tui_mode(true);
                     }
-                    self.clear = true;
                 }
                 Some(Item::Folder(title)) => {
                     self.path.push(title);
