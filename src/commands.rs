@@ -49,8 +49,8 @@ pub enum Command {
     },
     #[structopt(about = "update note with give file or stdin")]
     Update {
-        in_file: Option<std::path::PathBuf>,
         note: std::path::PathBuf,
+        in_file: Option<std::path::PathBuf>,
     },
     #[structopt(about = "edit note in an editor")]
     Edit {
