@@ -15,9 +15,27 @@ Terminal UI is explained here.
     |               |                              |
     |               |                              |
     |               |                              |
-    |               |                              |
-    |               |                              |
-    +---------------+------------------------------+
+    +----------------------------------------------+
+    |:                                             |
+    +----------------------------------------------+
+```
+
+## PopUpView
+
+```ascii
+    +----------------------------------------------+
+    |                                              |
+    |                                              |
+    |          +------------------------+          |
+    |          | <Message or Question>  |          |
+    |          |                        |          |
+    |          | <Optional Input>       |          |
+    |          |                        |          |
+    |          |            [Ok][Cancel]|          |
+    |          +------------------------+          |
+    |                                              |
+    |                                              |
+    +----------------------------------------------+
 ```
 
 ## Content
@@ -26,3 +44,17 @@ Terminal UI is explained here.
 | ------ | -------------------- | ---------------------- |
 | Folder | sub Folder + notes   | make it current folder |
 | Note   | body display as text | run edit command       |
+| None   | help message         | n/a                    |
+
+## Key Maps
+
+| keys               | action              |
+| ------------------ | ------------------- |
+| j,k,up,down        | movement in list    |
+| l, enter, right    | select item in list |
+| h, backspace, left | go back             |
+| a                  | add folder/note     |
+| d                  | delete folder/note  |
+| m                  | move note           |
+| c                  | copy note           |
+| :                  | interpreter         |
