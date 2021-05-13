@@ -56,23 +56,41 @@ impl AppContext {
         }
     }
 
-    pub fn run(&mut self) {
-        self.render_loop(&mut terminal);
+    pub fn render(&mut self) {
+        let items = self.list();
+        let path = self.path.to_string_lossy().into();
+        {
+            let mut items_state = self.items_state.clone();
+            match self.err_msg {
+                Some(ref msg) => {
+                    self.terminal
+                        .draw(|rect| {
+                            let popup = views::PopUpView { msg: msg.clone() };
+                            rect.render_widget(popup, rect.size());
+                        })
+                        .expect("failed to draw");
+                }
+                None => {
+                    self.terminal
+                        .draw(|rect| {
+                            let app_view = views::AppView { items, path };
+                            rect.render_stateful_widget(app_view, rect.size(), &mut items_state)
+                        })
+                        .expect("failed to draw");
+                }
+            }
+            self.items_state = items_state;
+        }
     }
 
-    fn render_loop(&mut self, terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>) {
+    pub fn run(&mut self) {
         self.tui_mode(true);
         loop {
-            terminal
-                .draw(|rect| {
-                    let app_view = views::AppView {
-                        items: self.list(),
-                        path: self.path.to_string_lossy().into(),
-                    };
-                    rect.render_stateful_widget(app_view, rect.size(), &mut self.items_state)
-                })
-                .expect("failed to draw");
+            self.render();
             if let Event::Key(key) = event::read().expect("can read events") {
+                if self.err_msg.take().is_some() {
+                    continue;
+                }
                 match key.code {
                     KeyCode::Char('q') => {
                         break;

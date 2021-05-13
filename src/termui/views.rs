@@ -1,7 +1,8 @@
 use tui::{
+    layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     text::{Span, Spans},
-    widgets::{Block, Borders, List, ListItem, ListState, StatefulWidget},
+    widgets::{Block, Borders, List, ListItem, ListState, Paragraph, StatefulWidget, Widget},
 };
 
 use super::Item;
@@ -55,8 +56,51 @@ impl StatefulWidget for AppView {
                 .fg(Color::Black)
                 .add_modifier(Modifier::BOLD),
         );
-        list.render(area, buf, state);
+        StatefulWidget::render(list, area, buf, state);
     }
 
     type State = ListState;
+}
+
+pub struct PopUpView {
+    pub msg: String,
+}
+
+impl Widget for PopUpView {
+    fn render(self, area: tui::layout::Rect, buf: &mut tui::buffer::Buffer) {
+        let percent_y = 20;
+        let percent_x = 50;
+        let popup_layout = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints(
+                [
+                    Constraint::Percentage((100 - percent_y) / 2),
+                    Constraint::Percentage(percent_y),
+                    Constraint::Percentage((100 - percent_y) / 2),
+                ]
+                .as_ref(),
+            )
+            .split(area);
+
+        let popup = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints(
+                [
+                    Constraint::Percentage((100 - percent_x) / 2),
+                    Constraint::Percentage(percent_x),
+                    Constraint::Percentage((100 - percent_x) / 2),
+                ]
+                .as_ref(),
+            )
+            .split(popup_layout[1])[1];
+
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .style(Style::default().fg(Color::White))
+            .title("popup");
+        Paragraph::new(self.msg)
+            .alignment(Alignment::Center)
+            .block(block)
+            .render(popup, buf);
+    }
 }
