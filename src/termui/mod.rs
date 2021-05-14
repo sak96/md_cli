@@ -92,9 +92,7 @@ impl AppContext {
                     continue;
                 }
                 match key.code {
-                    KeyCode::Char('q') => {
-                        break;
-                    }
+                    KeyCode::Char('q') => break,
                     KeyCode::Enter | KeyCode::Char('l') | KeyCode::Right => self.enter(),
                     KeyCode::Backspace | KeyCode::Char('h') | KeyCode::Left => self.back(),
                     KeyCode::Char('k') | KeyCode::Up => self.up(),
