@@ -22,26 +22,18 @@ pub enum Command {
         #[structopt(default_value = "/")]
         path: std::path::PathBuf,
     },
-    #[structopt(visible_alias = "mb", about = "make book")]
-    MkBook {
+    #[structopt(visible_alias = "mk", about = "remove book (path ends with /) or note")]
+    Make {
         #[structopt(short = "p")]
         parents: bool,
         path: std::path::PathBuf,
     },
-    #[structopt(visible_alias = "rb", about = "remove book")]
-    RmBook {
+    #[structopt(visible_alias = "rm", about = "remove book (path ends with /) or note")]
+    Remove {
         #[structopt(short = "r")]
         recursive: bool,
         path: std::path::PathBuf,
     },
-    #[structopt(visible_alias = "mn", about = "make notes")]
-    MkNote {
-        #[structopt(short = "p")]
-        parents: bool,
-        path: std::path::PathBuf,
-    },
-    #[structopt(visible_alias = "rn", about = "remove notes")]
-    RmNote { path: std::path::PathBuf },
     #[structopt(about = "output note to file or stdout")]
     Cat {
         note: std::path::PathBuf,
@@ -119,26 +111,24 @@ impl Command {
                     }
                 }
             }
-            Command::MkBook { parents, path } => {
-                Folder::make(&path, *parents, &connection)?;
+            Command::Make { parents, path } => {
+                if path.to_string_lossy().ends_with("/") {
+                    Folder::make(&path, *parents, &connection)?;
+                } else {
+                    Note::make(&path, *parents, &connection)?;
+                }
                 println!("{} successfully created", path.to_string_lossy());
             }
-            Command::RmBook { recursive, path } => {
-                println!(
-                    "{} successfully delete\n{} rows delete",
-                    path.to_string_lossy(),
+            Command::Remove { recursive, path } => {
+                let rows = if path.to_string_lossy().ends_with("/") {
                     Folder::delete(path, *recursive, &connection)?
-                );
-            }
-            Command::MkNote { parents, path } => {
-                Note::make(&path, *parents, &connection)?;
-                println!("{} successfully created", path.to_string_lossy());
-            }
-            Command::RmNote { path } => {
+                } else {
+                    Note::delete(path, &connection)?
+                };
                 println!(
                     "{} successfully delete\n{} rows delete",
                     path.to_string_lossy(),
-                    Note::delete(path, &connection)?
+                    rows
                 );
             }
             Command::Cat {
