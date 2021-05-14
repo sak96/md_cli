@@ -1,9 +1,6 @@
 use std::{
     fs::OpenOptions,
     io::{stdin, stdout, Read, Write},
-    path::PathBuf,
-    process,
-    time::SystemTime,
 };
 
 use crate::db::{models::*, DbConnection};
@@ -45,11 +42,7 @@ pub enum Command {
         in_file: Option<std::path::PathBuf>,
     },
     #[structopt(about = "edit note in an editor")]
-    Edit {
-        #[structopt(short = "e", env = "EDITOR")]
-        editor: Option<std::path::PathBuf>,
-        note: std::path::PathBuf,
-    },
+    Edit { note: std::path::PathBuf },
     #[structopt(visible_alias = "mv", about = "move note")]
     Move {
         #[structopt(short = "p")]
@@ -149,49 +142,28 @@ impl Command {
                     .write_all(Note::cat(&note, &connection)?.as_bytes())
                     .map_err(|e| e.to_string())?;
             }
-            Command::Edit { editor, note } => {
-                if let Some(editor) = editor {
-                    let mut temp_file = std::env::temp_dir();
-                    temp_file.push(&format!(
-                        "tmp_{}_{}_{}",
-                        structopt::clap::crate_name!(),
-                        Uuid::new_v4().to_string(),
-                        note.file_name()
-                            .unwrap_or(Default::default())
-                            .to_string_lossy()
-                    ));
-                    {
-                        Command::Cat {
-                            note: note.clone(),
-                            out_file: Some(temp_file.clone()),
-                        }
-                        .execute(&connection)?;
-                    }
-                    let mut command = process::Command::new(editor);
-                    command.arg(&temp_file);
-                    let get_last_modified = |path: &PathBuf| -> std::io::Result<SystemTime> {
-                        std::fs::metadata(&path)?.modified()
-                    };
-                    let last_modified = get_last_modified(&temp_file).map_err(|e| e.to_string())?;
-                    {
-                        let mut handle = command.spawn().map_err(|e| e.to_string())?;
-                        handle.wait().map_err(|e| e.to_string())?;
-                    }
-                    if last_modified < get_last_modified(&temp_file).map_err(|e| e.to_string())? {
-                        {
-                            Command::Update {
-                                note: note.clone(),
-                                in_file: Some(temp_file.clone()),
-                            }
-                            .execute(&connection)?;
-                        }
-                    } else {
-                        println!("Nothing modified")
-                    }
-                    std::fs::remove_file(temp_file).map_err(|e| e.to_string())?;
-                } else {
-                    Err("EditorUndefined")?
+            Command::Edit { note } => {
+                let mut temp_file = std::env::temp_dir();
+                temp_file.push(&format!(
+                    "tmp_{}_{}_{}",
+                    structopt::clap::crate_name!(),
+                    Uuid::new_v4().to_string(),
+                    note.file_name()
+                        .unwrap_or(Default::default())
+                        .to_string_lossy()
+                ));
+                Command::Cat {
+                    note: note.clone(),
+                    out_file: Some(temp_file.clone()),
                 }
+                .execute(&connection)?;
+                edit::edit_file(&temp_file).map_err(|e| e.to_string())?;
+                Command::Update {
+                    note: note.clone(),
+                    in_file: Some(temp_file.clone()),
+                }
+                .execute(&connection)?;
+                std::fs::remove_file(temp_file).map_err(|e| e.to_string())?;
             }
             Command::Update { note, in_file: src } => {
                 let mut reader: Box<dyn Read> = match src {
