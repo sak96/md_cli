@@ -1,5 +1,6 @@
 use tui::{
-    layout::{Alignment, Constraint, Direction, Layout},
+    buffer::Buffer,
+    layout::{Alignment, Rect},
     style::{Color, Modifier, Style},
     text::{Span, Spans},
     widgets::{Block, Borders, List, ListItem, ListState, Paragraph, StatefulWidget, Widget},
@@ -10,28 +11,31 @@ use super::Item;
 pub struct AppView {
     pub items: Vec<Item>,
     pub path: String,
+    pub active: bool,
 }
 
 impl StatefulWidget for AppView {
-    fn render(
-        self,
-        area: tui::layout::Rect,
-        buf: &mut tui::buffer::Buffer,
-        state: &mut Self::State,
-    ) {
+    fn render(self, area: Rect, buf: &mut Buffer, list_state: &mut Self::State) {
         let block = Block::default()
             .borders(Borders::ALL)
-            .style(Style::default().fg(Color::White))
+            .style({
+                let style = Style::default();
+                if self.active {
+                    style.fg(Color::Yellow)
+                } else {
+                    style.fg(Color::White)
+                }
+            })
             .title(self.path);
-        match state.selected() {
+        match list_state.selected() {
             _ if self.items.is_empty() => {
-                state.select(None);
+                list_state.select(None);
             }
             Some(selected) if selected >= self.items.len() => {
-                state.select(Some(self.items.len() - 1));
+                list_state.select(Some(self.items.len() - 1));
             }
             None => {
-                state.select(Some(0));
+                list_state.select(Some(0));
             }
             _ => {}
         }
@@ -56,7 +60,7 @@ impl StatefulWidget for AppView {
                 .fg(Color::Black)
                 .add_modifier(Modifier::BOLD),
         );
-        StatefulWidget::render(list, area, buf, state);
+        StatefulWidget::render(list, area, buf, list_state);
     }
 
     type State = ListState;
@@ -67,33 +71,7 @@ pub struct PopUpView {
 }
 
 impl Widget for PopUpView {
-    fn render(self, area: tui::layout::Rect, buf: &mut tui::buffer::Buffer) {
-        let percent_y = 20;
-        let percent_x = 50;
-        let popup_layout = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints(
-                [
-                    Constraint::Percentage((100 - percent_y) / 2),
-                    Constraint::Percentage(percent_y),
-                    Constraint::Percentage((100 - percent_y) / 2),
-                ]
-                .as_ref(),
-            )
-            .split(area);
-
-        let popup = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints(
-                [
-                    Constraint::Percentage((100 - percent_x) / 2),
-                    Constraint::Percentage(percent_x),
-                    Constraint::Percentage((100 - percent_x) / 2),
-                ]
-                .as_ref(),
-            )
-            .split(popup_layout[1])[1];
-
+    fn render(self, area: Rect, buf: &mut Buffer) {
         let block = Block::default()
             .borders(Borders::ALL)
             .style(Style::default().fg(Color::White))
@@ -101,6 +79,30 @@ impl Widget for PopUpView {
         Paragraph::new(self.msg)
             .alignment(Alignment::Center)
             .block(block)
-            .render(popup, buf);
+            .render(area, buf);
     }
+}
+
+pub struct Interpreter {
+    pub input: String,
+}
+
+impl StatefulWidget for Interpreter {
+    fn render(self, area: Rect, buf: &mut Buffer, input_mode: &mut Self::State) {
+        let input = Paragraph::new(self.input.as_ref())
+            .style({
+                let mut style = Style::default();
+                if *input_mode {
+                    style = style.fg(Color::Yellow)
+                }
+                style
+            })
+            .block(Block::default().borders(Borders::ALL).title(format!(
+                "{}|Esc: to stop editing|Enter: to execute|",
+                structopt::clap::crate_name!()
+            )));
+        input.render(area, buf);
+    }
+
+    type State = bool;
 }

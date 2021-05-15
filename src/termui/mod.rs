@@ -7,7 +7,10 @@ use crossterm::{
 };
 
 use structopt::StructOpt;
-use tui::backend::CrosstermBackend;
+use tui::{
+    backend::CrosstermBackend,
+    layout::{Constraint, Direction, Layout},
+};
 use tui::{widgets::ListState, Terminal};
 
 use crate::{
@@ -17,13 +20,28 @@ use crate::{
 
 mod views;
 
+#[derive(StructOpt)]
+enum TuiCommand {
+    #[structopt(flatten)]
+    Command(Command),
+    #[structopt(visible_alias = "q", about = "quit")]
+    Quit,
+}
+
 pub type TermBackend = Terminal<CrosstermBackend<std::io::Stdout>>;
 pub struct AppContext {
     path: PathBuf,
     items_state: ListState,
     conn: DbConnection,
-    err_msg: Option<String>,
+    err_msg: Vec<String>,
+    input: String,
+    state: ActiveElement,
     terminal: TermBackend,
+}
+
+enum ActiveElement {
+    FolderView,
+    Interpreter,
 }
 
 pub enum Item {
@@ -38,7 +56,9 @@ impl AppContext {
         Self {
             conn,
             terminal,
+            state: ActiveElement::FolderView,
             path: Default::default(),
+            input: Default::default(),
             items_state: Default::default(),
             err_msg: Default::default(),
         }
@@ -58,47 +78,99 @@ impl AppContext {
 
     pub fn render(&mut self) {
         let items = self.list();
-        let path = self.path.to_string_lossy().into();
         {
-            let mut items_state = self.items_state.clone();
-            match self.err_msg {
-                Some(ref msg) => {
-                    self.terminal
-                        .draw(|rect| {
-                            let popup = views::PopUpView { msg: msg.clone() };
-                            rect.render_widget(popup, rect.size());
-                        })
-                        .expect("failed to draw");
-                }
-                None => {
-                    self.terminal
-                        .draw(|rect| {
-                            let app_view = views::AppView { items, path };
-                            rect.render_stateful_widget(app_view, rect.size(), &mut items_state)
-                        })
-                        .expect("failed to draw");
-                }
-            }
-            self.items_state = items_state;
+            let AppContext {
+                path,
+                ref mut items_state,
+                conn: _conn,
+                err_msg,
+                input,
+                state,
+                ref mut terminal,
+            } = self;
+            terminal
+                .draw(|rect| {
+                    let chunks = Layout::default()
+                        .direction(Direction::Vertical)
+                        .margin(2)
+                        .constraints([Constraint::Min(1), Constraint::Length(3)].as_ref())
+                        .split(rect.size());
+
+                    let chucks_2 = Layout::default()
+                        .direction(Direction::Horizontal)
+                        .margin(2)
+                        .constraints([Constraint::Ratio(1, 3), Constraint::Min(1)].as_ref())
+                        .split(chunks[0]);
+
+                    let is_folder_view = matches!(state, ActiveElement::FolderView);
+                    let popup = views::PopUpView {
+                        msg: err_msg.last().to_owned().unwrap_or(&String::new()).into(),
+                    };
+                    let interpreter = views::Interpreter {
+                        input: input.clone(),
+                    };
+                    let app_view = views::AppView {
+                        items,
+                        path: path.to_string_lossy().to_string(),
+                        active: is_folder_view.clone(),
+                    };
+                    rect.render_stateful_widget(app_view, chucks_2[0], items_state);
+                    rect.render_widget(popup, chucks_2[1]);
+                    rect.render_stateful_widget(interpreter, chunks[1], &mut !is_folder_view);
+                })
+                .expect("failed to draw");
         }
+    }
+
+    pub fn handle_events(&mut self) -> bool {
+        if let Event::Key(key) = event::read().expect("can read events") {
+            match self.state {
+                ActiveElement::FolderView => match key.code {
+                    KeyCode::Char('q') => return false,
+                    KeyCode::Enter | KeyCode::Char('l') | KeyCode::Right => self.enter(),
+                    KeyCode::Backspace | KeyCode::Char('h') | KeyCode::Left => self.back(),
+                    KeyCode::Char('k') | KeyCode::Up => self.up(),
+                    KeyCode::Char('j') | KeyCode::Down => self.down(),
+                    KeyCode::Char(':') | KeyCode::Tab => self.state = ActiveElement::Interpreter,
+                    _ => {}
+                },
+                ActiveElement::Interpreter => match key.code {
+                    KeyCode::Enter => {
+                        match TuiCommand::from_iter_safe(
+                            self.input
+                                .drain(..)
+                                .collect::<String>()
+                                .split_ascii_whitespace(),
+                        ) {
+                            Ok(TuiCommand::Quit) => return false,
+                            Ok(TuiCommand::Command(cmd)) => {
+                                self.tui_mode(false);
+                                if let Err(msg) = cmd.execute(&self.conn) {
+                                    self.err_msg.push(msg)
+                                }
+                                self.tui_mode(true);
+                            }
+                            _ => {}
+                        }
+                    }
+                    KeyCode::Char(c) => self.input.push(c),
+                    KeyCode::Backspace => {
+                        self.input.pop();
+                    }
+                    KeyCode::Esc | KeyCode::Tab => self.state = ActiveElement::FolderView,
+                    _ => {}
+                },
+            }
+        }
+        return true;
     }
 
     pub fn run(&mut self) {
         self.tui_mode(true);
         loop {
             self.render();
-            if let Event::Key(key) = event::read().expect("can read events") {
-                if self.err_msg.take().is_some() {
-                    continue;
-                }
-                match key.code {
-                    KeyCode::Char('q') => break,
-                    KeyCode::Enter | KeyCode::Char('l') | KeyCode::Right => self.enter(),
-                    KeyCode::Backspace | KeyCode::Char('h') | KeyCode::Left => self.back(),
-                    KeyCode::Char('k') | KeyCode::Up => self.up(),
-                    KeyCode::Char('j') | KeyCode::Down => self.down(),
-                    _ => {}
-                }
+            if !self.handle_events() {
+                break;
             }
         }
         self.tui_mode(false);
@@ -112,7 +184,7 @@ impl AppContext {
                 .chain(notes.into_iter().map(|n| Item::Note(n.title)))
                 .collect(),
             Err(msg) => {
-                self.err_msg = Some(msg);
+                self.err_msg.push(msg);
                 vec![]
             }
         }
@@ -145,7 +217,7 @@ impl AppContext {
                     ]) {
                         self.tui_mode(false);
                         if let Err(msg) = cmd.execute(&self.conn) {
-                            self.err_msg = Some(msg)
+                            self.err_msg.push(msg)
                         }
                         self.tui_mode(true);
                     }

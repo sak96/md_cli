@@ -9,6 +9,7 @@ Markdown notes taking cli applications
   - [ ] ren
   - [ ] integration_test for notes
 - [ ] [Tui](./docs/tui.md)
+  - [x] basic layout
   - [ ] config sort
   - [ ] use (select a item $n $c)
 - [ ] Sync to targets
