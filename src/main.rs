@@ -18,6 +18,7 @@ use structopt::StructOpt;
 pub enum SingleCommand {
     #[structopt(flatten)]
     Single(Command),
+    #[structopt(visible_alias = "q")]
     Tui,
 }
 
