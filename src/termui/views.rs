@@ -1,8 +1,8 @@
 use tui::{
     buffer::Buffer,
-    layout::{Alignment, Rect},
+    layout::Rect,
     style::{Color, Modifier, Style},
-    text::{Span, Spans},
+    text::{Span, Spans, Text},
     widgets::{Block, Borders, List, ListItem, ListState, Paragraph, StatefulWidget, Widget},
 };
 
@@ -66,20 +66,30 @@ impl StatefulWidget for AppView {
     type State = ListState;
 }
 
-pub struct PopUpView {
-    pub msg: String,
+pub struct PopUpView<'a> {
+    pub msg: &'a [Result<String, String>],
 }
 
-impl Widget for PopUpView {
+impl Widget for PopUpView<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let block = Block::default()
             .borders(Borders::ALL)
             .style(Style::default().fg(Color::White))
             .title("popup");
-        Paragraph::new(self.msg)
-            .alignment(Alignment::Center)
-            .block(block)
-            .render(area, buf);
+        let list = List::new(
+            self.msg
+                .into_iter()
+                .rev()
+                .map(|item| {
+                    ListItem::new(match item {
+                        Err(msg) => Text::styled(msg, Style::default().fg(Color::Red)),
+                        Ok(msg) => Text::styled(msg, Style::default().fg(Color::White)),
+                    })
+                })
+                .collect::<Vec<_>>(),
+        )
+        .block(block);
+        Widget::render(list, area, buf);
     }
 }
 

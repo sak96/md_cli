@@ -40,25 +40,23 @@ impl Interpreter {
     pub fn run(&mut self) {
         while let Ok(line) = self.read_line() {
             match InterpreterCommand::from_iter_safe(line.split_whitespace()) {
-                Ok(InterpreterCommand::Command(c)) => {
-                    if let Err(err) = c.execute(&self.conn) {
-                        eprintln!("{}", err);
-                    }
-                }
+                Ok(InterpreterCommand::Command(c)) => match c.execute(&self.conn) {
+                    Err(err) => eprintln!("{}", err),
+                    Ok(msg) => println!("{}", msg),
+                },
                 Ok(InterpreterCommand::Quit) => {
                     break;
                 }
-                Err(e) => match e.kind {
-                    structopt::clap::ErrorKind::HelpDisplayed => {
+                Err(e) => {
+                    if matches!(e.kind, structopt::clap::ErrorKind::HelpDisplayed) {
                         eprintln!("{}", e.message);
-                    }
-                    _ => {
+                    } else {
                         eprintln!("Error: {:?}", e.kind);
                         eprintln!("Info: {:?}", e.info);
                         eprintln!("\n==============================");
                         InterpreterCommand::clap().print_long_help().unwrap();
                     }
-                },
+                }
             }
         }
     }

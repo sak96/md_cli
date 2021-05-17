@@ -64,14 +64,16 @@ pub enum Command {
 }
 
 impl Command {
-    pub fn execute(&self, connection: &DbConnection) -> Result<(), String> {
+    pub fn execute(&self, connection: &DbConnection) -> Result<String, String> {
         // dbg!(&self);
+        let output;
         match &self {
             Command::List {
                 indent,
                 recursive,
                 path,
             } => {
+                let mut buffer = String::new();
                 let (folders, notes) = Folder::list(&path, &connection)?;
                 let mut count = folders.len() + notes.len();
                 let mut connector = || {
@@ -83,26 +85,29 @@ impl Command {
                     }
                 };
                 for note in notes {
-                    println!("{}{}{}", indent, connector(), note.title);
+                    buffer.push_str(&format!("{}{}{}\n", indent, connector(), note.title));
                 }
                 for folder in folders {
                     let connector = connector();
-                    println!("{}{}{}/", indent, connector, folder.title);
+                    buffer.push_str(&format!("{}{}{}/\n", indent, connector, folder.title));
                     if *recursive {
                         let mut path = path.clone();
                         path.push(folder.title);
-                        Command::List {
-                            indent: format!(
-                                "{}{}",
-                                indent,
-                                if connector == "├─" { "│ " } else { "  " }
-                            ),
-                            recursive: true,
-                            path,
-                        }
-                        .execute(&connection)?;
+                        buffer.push_str(
+                            &Command::List {
+                                indent: format!(
+                                    "{}{}",
+                                    indent,
+                                    if connector == "├─" { "│ " } else { "  " }
+                                ),
+                                recursive: true,
+                                path,
+                            }
+                            .execute(&connection)?,
+                        );
                     }
                 }
+                output = buffer;
             }
             Command::Make { parents, path } => {
                 if path.to_string_lossy().ends_with("/") {
@@ -110,7 +115,7 @@ impl Command {
                 } else {
                     Note::make(&path, *parents, &connection)?;
                 }
-                println!("{} successfully created", path.to_string_lossy());
+                output = format!("{} successfully created", path.to_string_lossy());
             }
             Command::Remove { recursive, path } => {
                 let rows = if path.to_string_lossy().ends_with("/") {
@@ -118,7 +123,7 @@ impl Command {
                 } else {
                     Note::delete(path, &connection)?
                 };
-                println!(
+                output = format!(
                     "{} successfully delete\n{} rows delete",
                     path.to_string_lossy(),
                     rows
@@ -141,6 +146,7 @@ impl Command {
                 writer
                     .write_all(Note::cat(&note, &connection)?.as_bytes())
                     .map_err(|e| e.to_string())?;
+                output = String::new();
             }
             Command::Edit { note } => {
                 let mut temp_file = std::env::temp_dir();
@@ -164,6 +170,7 @@ impl Command {
                 }
                 .execute(&connection)?;
                 std::fs::remove_file(temp_file).map_err(|e| e.to_string())?;
+                output = String::new();
             }
             Command::Update { note, in_file: src } => {
                 let mut reader: Box<dyn Read> = match src {
@@ -180,7 +187,7 @@ impl Command {
                     .read_to_string(&mut body)
                     .map_err(|e| e.to_string())?;
                 let rows = Note::update(&note, body, &connection)?;
-                println!(
+                output = format!(
                     "{} successfully created\n {} rows effected",
                     note.to_string_lossy(),
                     rows
@@ -193,7 +200,7 @@ impl Command {
                 dest_book,
             } => {
                 let rows = Note::copy_note(&src, &dest_book, *overwrite, *parents, &connection)?;
-                println!("copy successful\n {} rows effected", rows);
+                output = format!("copy successful\n {} rows effected", rows);
             }
             Command::Move {
                 parents,
@@ -202,9 +209,9 @@ impl Command {
                 dest_book,
             } => {
                 let rows = Note::move_note(&src, &dest_book, *overwrite, *parents, &connection)?;
-                println!("move successful\n {} rows effected", rows);
+                output = format!("move successful\n {} rows effected", rows);
             }
         }
-        Ok(())
+        Ok(output)
     }
 }

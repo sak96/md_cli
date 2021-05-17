@@ -33,7 +33,7 @@ pub struct AppContext {
     path: PathBuf,
     items_state: ListState,
     conn: DbConnection,
-    err_msg: Vec<String>,
+    err_msg: Vec<Result<String, String>>,
     input: String,
     state: ActiveElement,
     terminal: TermBackend,
@@ -83,7 +83,7 @@ impl AppContext {
                 path,
                 ref mut items_state,
                 conn: _conn,
-                err_msg,
+                ref mut err_msg,
                 input,
                 state,
                 ref mut terminal,
@@ -103,8 +103,11 @@ impl AppContext {
                         .split(chunks[0]);
 
                     let is_folder_view = matches!(state, ActiveElement::FolderView);
+                    if err_msg.len() > 20 {
+                        err_msg.drain(20..);
+                    }
                     let popup = views::PopUpView {
-                        msg: err_msg.last().to_owned().unwrap_or(&String::new()).into(),
+                        msg: err_msg.as_ref(),
                     };
                     let interpreter = views::Interpreter {
                         input: input.clone(),
@@ -145,12 +148,17 @@ impl AppContext {
                             Ok(TuiCommand::Quit) => return false,
                             Ok(TuiCommand::Command(cmd)) => {
                                 self.tui_mode(false);
-                                if let Err(msg) = cmd.execute(&self.conn) {
-                                    self.err_msg.push(msg)
-                                }
+                                self.err_msg.push(cmd.execute(&self.conn));
                                 self.tui_mode(true);
                             }
-                            _ => {}
+                            Err(e) => {
+                                if matches!(e.kind, structopt::clap::ErrorKind::HelpDisplayed) {
+                                    self.err_msg.push(Ok(e.message))
+                                } else {
+                                    self.err_msg
+                                        .push(Err(format!("{:?} error ({:?})", e.kind, e.info)))
+                                }
+                            }
                         }
                     }
                     KeyCode::Char(c) => self.input.push(c),
@@ -184,7 +192,7 @@ impl AppContext {
                 .chain(notes.into_iter().map(|n| Item::Note(n.title)))
                 .collect(),
             Err(msg) => {
-                self.err_msg.push(msg);
+                self.err_msg.push(Err(msg));
                 vec![]
             }
         }
@@ -216,9 +224,7 @@ impl AppContext {
                         note.to_string_lossy().into(),
                     ]) {
                         self.tui_mode(false);
-                        if let Err(msg) = cmd.execute(&self.conn) {
-                            self.err_msg.push(msg)
-                        }
+                        self.err_msg.push(cmd.execute(&self.conn));
                         self.tui_mode(true);
                     }
                 }

@@ -31,11 +31,10 @@ fn main() {
                 interpreter::Interpreter::new(&prompt, connection).run();
             } else {
                 match SingleCommand::from_iter_safe(args.into_iter().skip(1)) {
-                    Ok(SingleCommand::Single(c)) => {
-                        if let Err(err) = c.execute(&connection) {
-                            eprintln!("{}", err);
-                        }
-                    }
+                    Ok(SingleCommand::Single(c)) => match c.execute(&connection) {
+                        Err(err) => eprintln!("{}", err),
+                        Ok(msg) => println!("{}", msg),
+                    },
                     Ok(SingleCommand::Tui) => {
                         #[cfg(not(feature = "termui"))]
                         eprintln!("use --features termui to enable tui.");
