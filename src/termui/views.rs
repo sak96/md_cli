@@ -89,18 +89,30 @@ pub struct Interpreter {
 
 impl StatefulWidget for Interpreter {
     fn render(self, area: Rect, buf: &mut Buffer, input_mode: &mut Self::State) {
-        let input = Paragraph::new(self.input.as_ref())
-            .style({
-                let mut style = Style::default();
-                if *input_mode {
-                    style = style.fg(Color::Yellow)
-                }
-                style
-            })
-            .block(Block::default().borders(Borders::ALL).title(format!(
-                "{}|Esc: to stop editing|Enter: to execute|",
-                structopt::clap::crate_name!()
-            )));
+        let input = Paragraph::new(Spans::from({
+            let input: &str = self.input.as_ref();
+            let mut spans = vec![Span::raw(input)];
+            if *input_mode {
+                spans.push(Span::styled(
+                    "_".to_owned(),
+                    Style::default()
+                        .add_modifier(Modifier::UNDERLINED)
+                        .fg(Color::Yellow),
+                ))
+            }
+            spans
+        }))
+        .style({
+            let mut style = Style::default();
+            if *input_mode {
+                style = style.fg(Color::Yellow)
+            }
+            style
+        })
+        .block(Block::default().borders(Borders::ALL).title(format!(
+            "{}|Esc: to stop editing|Enter: to execute|",
+            structopt::clap::crate_name!()
+        )));
         input.render(area, buf);
     }
 
