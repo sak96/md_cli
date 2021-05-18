@@ -98,7 +98,6 @@ impl AppContext {
 
                     let chucks_2 = Layout::default()
                         .direction(Direction::Horizontal)
-                        .margin(2)
                         .constraints([Constraint::Ratio(1, 3), Constraint::Min(1)].as_ref())
                         .split(chunks[0]);
 
