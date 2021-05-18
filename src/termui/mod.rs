@@ -80,13 +80,13 @@ impl AppContext {
         let items = self.list();
         {
             let AppContext {
+                items_state,
+                err_msg,
+                terminal,
                 path,
-                ref mut items_state,
-                conn: _conn,
-                ref mut err_msg,
                 input,
                 state,
-                ref mut terminal,
+                ..
             } = self;
             terminal
                 .draw(|rect| {
