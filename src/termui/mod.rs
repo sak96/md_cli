@@ -103,7 +103,7 @@ impl AppContext {
 
                     let is_folder_view = matches!(state, ActiveElement::FolderView);
                     if err_msg.len() > 20 {
-                        err_msg.drain(20..);
+                        err_msg.drain(..err_msg.len()-20);
                     }
                     let popup = views::PopUpView {
                         msg: err_msg.as_ref(),
