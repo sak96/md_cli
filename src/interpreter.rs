@@ -39,7 +39,14 @@ impl Interpreter {
 
     pub fn run(&mut self) {
         while let Ok(line) = self.read_line() {
-            match InterpreterCommand::from_iter_safe(line.split_whitespace()) {
+            let args = match shellwords::split(&line) {
+                Ok(args) => args,
+                Err(err) => {
+                    eprintln!("{}", err);
+                    return;
+                }
+            };
+            match InterpreterCommand::from_iter_safe(args) {
                 Ok(InterpreterCommand::Command(c)) => match c.execute(&self.conn) {
                     Err(err) => eprintln!("{}", err),
                     Ok(msg) => println!("{}", msg),

@@ -221,12 +221,13 @@ impl Interpreter {
     pub fn handle_events(&mut self, key: KeyCode, _conn: &DbConnection) -> Return {
         match key {
             KeyCode::Enter => {
-                match TuiCommand::from_iter_safe(
-                    self.input
-                        .drain(..)
-                        .collect::<String>()
-                        .split_ascii_whitespace(),
-                ) {
+                let args = match shellwords::split(&self.input.drain(..).collect::<String>()) {
+                    Ok(args) => args,
+                    Err(err) => {
+                        return Return::Error(err.to_string());
+                    }
+                };
+                match TuiCommand::from_iter_safe(args) {
                     Ok(tui_cmd) => return Return::Command(tui_cmd),
                     Err(e) => return Return::Error(e.to_string()),
                 }

@@ -15,6 +15,7 @@ edit = "0.1"
 rustyline = "8.0"
 tui = { version = "0.15.0", optional = true, features = ['crossterm'], default-features = false }
 crossterm = { version = "0.19", optional = true }
+shellwords = "1.0"
 
 [features]
 default = []
