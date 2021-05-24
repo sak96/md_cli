@@ -32,3 +32,10 @@ Terminal UI is explained here.
 | m                  | move note           |
 | c                  | copy note           |
 | :                  | interpreter         |
+
+## Context Variables
+
+| syntax           | value            |
+| ---------------- | ---------------- |
+| {{C}}/{{child}}  | selected element |
+| {{P}}/{{parent}} | parent element   |

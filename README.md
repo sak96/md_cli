@@ -11,7 +11,7 @@ Markdown notes taking cli applications
 - [ ] [Tui](./docs/tui.md)
   - [x] basic layout
   - [ ] config sort
-  - [ ] use (select a item $n $c)
+  - [x] provide context variables
 - [ ] Sync to targets
   - [ ] config sync
   - [ ] sync

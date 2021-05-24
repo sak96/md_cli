@@ -300,6 +300,7 @@ dependencies = [
  "edit",
  "rustyline",
  "shellwords",
+ "string_template",
  "structopt",
  "tui",
  "uuid",
@@ -628,6 +629,15 @@ name = "smallvec"
 version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fe0f37c9e8f3c5a4a66ad655a93c74daac4ad00c441533bf5c6e7990bb42604e"
+
+[[package]]
+name = "string_template"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc6f2c6b2c3fa950895c9aeb0c3cb9271d7eb580662af9af2b711b593f446320"
+dependencies = [
+ "regex",
+]
 
 [[package]]
 name = "strsim"

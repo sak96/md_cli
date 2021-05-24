@@ -1,6 +1,7 @@
-use std::path::PathBuf;
+use std::{collections::HashMap, path::PathBuf};
 
 use crossterm::event::KeyCode;
+use string_template::Template;
 use structopt::StructOpt;
 use tui::{
     buffer::Buffer,
@@ -39,6 +40,25 @@ pub enum Item {
     Folder(String),
 }
 
+impl Item {
+    pub fn get_color(&self) -> Color {
+        match self {
+            Self::Note(_) => Color::Blue,
+            Self::Folder(_) => Color::Green,
+        }
+    }
+
+    pub fn get_name(self) -> String {
+        match self {
+            Self::Note(path) => path,
+            Self::Folder(mut path) => {
+                path.push('/');
+                path
+            }
+        }
+    }
+}
+
 pub enum Return {
     Command(TuiCommand),
     State(ActiveElement),
@@ -53,11 +73,14 @@ pub struct FolderView {
 }
 
 impl FolderView {
-    pub fn get_current_path(&self) -> &PathBuf {
-        &self.path
+    pub fn get_context(&self, conn: &DbConnection) -> Context {
+        Context {
+            path: self.path.clone(),
+            note: self.get_selected_item(conn),
+        }
     }
 
-    pub fn get_selected_item(&self, conn: &DbConnection) -> Option<Item> {
+    fn get_selected_item(&self, conn: &DbConnection) -> Option<Item> {
         self.list(conn)
             .ok()?
             .into_iter()
@@ -155,12 +178,9 @@ impl StatefulWidget for &mut FolderView {
             items
                 .drain(..)
                 .map(|item| {
-                    ListItem::new(Spans::from(vec![match item {
-                        Item::Note(title) => Span::styled(title, Style::default().fg(Color::Blue)),
-                        Item::Folder(mut title) => {
-                            title.push('/');
-                            Span::styled(title, Style::default().fg(Color::Green))
-                        }
+                    ListItem::new(Spans::from(vec![{
+                        let color = item.get_color();
+                        Span::styled(item.get_name(), Style::default().fg(color))
                     }]))
                 })
                 .collect::<Vec<_>>(),
@@ -217,11 +237,34 @@ pub struct Interpreter {
     input: String,
 }
 
+pub struct Context {
+    pub path: PathBuf,
+    pub note: Option<Item>,
+}
+
 impl Interpreter {
-    pub fn handle_events(&mut self, key: KeyCode, _conn: &DbConnection) -> Return {
+    pub fn handle_events(&mut self, key: KeyCode, context: Context) -> Return {
         match key {
             KeyCode::Enter => {
-                let args = match shellwords::split(&self.input.drain(..).collect::<String>()) {
+                let template = Template::new(&self.input.drain(..).collect::<String>());
+                let mut subs = HashMap::new();
+
+                let parent = context.path.to_str().unwrap_or("");
+                let child = format!(
+                    "{}/{}",
+                    parent,
+                    context
+                        .note
+                        .unwrap_or(Item::Folder(String::new()))
+                        .get_name()
+                );
+                subs.insert("parent", parent);
+                subs.insert("P", parent);
+                subs.insert("child", &child);
+                subs.insert("C", &child);
+
+                let output = template.render(&subs);
+                let args = match shellwords::split(&output) {
                     Ok(args) => args,
                     Err(err) => {
                         return Return::Error(err.to_string());
@@ -266,7 +309,7 @@ impl StatefulWidget for &mut Interpreter {
             style
         })
         .block(Block::default().borders(Borders::ALL).title(format!(
-            "{}|Esc: to stop editing|Enter: to execute|",
+            "{}|Esc: to stop editing|Enter: to execute|{{c/CHILD}}: child|{{p/PARENT}}: parent",
             structopt::clap::crate_name!()
         )));
         input.render(area, buf);

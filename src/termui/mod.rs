@@ -81,7 +81,7 @@ impl AppContext {
                     .direction(Direction::Horizontal)
                     .constraints([Constraint::Ratio(1, 3), Constraint::Min(1)].as_ref())
                     .split(chunks[0]);
-                rect.render_stateful_widget(folder, chucks_2[0], &mut(items ,is_folder_view));
+                rect.render_stateful_widget(folder, chucks_2[0], &mut (items, is_folder_view));
                 rect.render_widget(popup, chucks_2[1]);
                 rect.render_stateful_widget(interpreter, chunks[1], &mut !is_folder_view);
             })
@@ -96,9 +96,9 @@ impl AppContext {
             if let Event::Key(key) = event::read().expect("can read events") {
                 match match self.state {
                     ActiveElement::FolderView => self.folder.handle_events(key.code, &self.conn),
-                    ActiveElement::Interpreter => {
-                        self.interpreter.handle_events(key.code, &self.conn)
-                    }
+                    ActiveElement::Interpreter => self
+                        .interpreter
+                        .handle_events(key.code, self.folder.get_context(&self.conn)),
                 } {
                     views::Return::Command(TuiCommand::Quit) => running = false,
                     views::Return::Command(TuiCommand::Command(cmd)) => {
