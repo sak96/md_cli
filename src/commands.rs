@@ -79,9 +79,9 @@ impl Command {
                 let mut connector = || {
                     count -= 1;
                     if count > 0 {
-                        "├─"
+                        "|-"
                     } else {
-                        "└─"
+                        "`-"
                     }
                 };
                 for note in notes {
@@ -98,7 +98,7 @@ impl Command {
                                 indent: format!(
                                     "{}{}",
                                     indent,
-                                    if connector == "├─" { "│ " } else { "  " }
+                                    if connector == "|-" { "| " } else { "  " }
                                 ),
                                 recursive: true,
                                 path,
