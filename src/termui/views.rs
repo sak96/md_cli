@@ -258,10 +258,10 @@ impl Interpreter {
                         .unwrap_or(Item::Folder(String::new()))
                         .get_name()
                 );
-                subs.insert("parent", parent);
-                subs.insert("P", parent);
-                subs.insert("child", &child);
-                subs.insert("C", &child);
+                subs.insert("PARENT", parent);
+                subs.insert("p", parent);
+                subs.insert("CHILD", &child);
+                subs.insert("c", &child);
 
                 let output = template.render(&subs);
                 let args = match shellwords::split(&output) {
@@ -309,7 +309,7 @@ impl StatefulWidget for &mut Interpreter {
             style
         })
         .block(Block::default().borders(Borders::ALL).title(format!(
-            "{}|Esc: to stop editing|Enter: to execute|{{c/CHILD}}: child|{{p/PARENT}}: parent",
+            "{}|Esc: to stop editing|Enter: to execute|{{{{c/CHILD}}}}: child|{{{{p/PARENT}}}}: parent",
             structopt::clap::crate_name!()
         )));
         input.render(area, buf);
